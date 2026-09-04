@@ -19,6 +19,7 @@ in the source distribution for its full text.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/sysinfo.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/sysmacros.h>
@@ -285,25 +286,30 @@ const MeterClass* const Platform_meterTypes[] = {
 
 int Platform_getUptime(void) {
    char uptimedata[64] = {0};
+   struct sysinfo info;
 
    ssize_t uptimeread = Compat_readfile(PROCDIR "/uptime", uptimedata, sizeof(uptimedata));
-   if (uptimeread < 1) {
-      return 0;
-   }
+   if (uptimeread < 1)
+      goto sysinfo;
 
    double uptime = 0;
    double idle = 0;
 
    int n = sscanf(uptimedata, "%lf %lf", &uptime, &idle);
-   if (n != 2) {
-      return 0;
-   }
+   if (n != 2)
+      goto sysinfo;
 
    return floor(uptime);
+
+sysinfo:
+   if (sysinfo(&info) == 0)
+      return (int)info.uptime;
+   return 0;
 }
 
 void Platform_getLoadAverage(double* one, double* five, double* fifteen) {
    char loaddata[128] = {0};
+   struct sysinfo info;
 
    *one = NAN;
    *five = NAN;
@@ -311,18 +317,27 @@ void Platform_getLoadAverage(double* one, double* five, double* fifteen) {
 
    ssize_t loadread = Compat_readfile(PROCDIR "/loadavg", loaddata, sizeof(loaddata));
    if (loadread < 1)
-      return;
+      goto sysinfo;
 
    double scanOne = NAN;
    double scanFive = NAN;
    double scanFifteen = NAN;
    int r = sscanf(loaddata, "%lf %lf %lf", &scanOne, &scanFive, &scanFifteen);
    if (r != 3)
-      return;
+      goto sysinfo;
 
    *one = scanOne;
    *five = scanFive;
    *fifteen = scanFifteen;
+   return;
+
+sysinfo:
+   if (sysinfo(&info) == 0) {
+      const double scale = 1.0 / (1UL << SI_LOAD_SHIFT);
+      *one = info.loads[0] * scale;
+      *five = info.loads[1] * scale;
+      *fifteen = info.loads[2] * scale;
+   }
 }
 
 pid_t Platform_getMaxPid(void) {
