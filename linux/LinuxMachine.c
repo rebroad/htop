@@ -20,6 +20,7 @@ in the source distribution for its full text.
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/sysinfo.h>
 #include <unistd.h>
 #include <time.h>
 
@@ -497,8 +498,57 @@ static void LinuxMachine_scanCPUTime(LinuxMachine* this) {
    LinuxMachine_updateCPUcount(this);
 
    FILE* file = fopen(PROCSTATFILE, "r");
-   if (!file)
-      CRT_fatalError("Cannot open " PROCSTATFILE);
+   if (!file) {
+      /* Android restricts /proc/stat to privileged processes. Its per-CPU
+       * cpuidle counters remain readable and provide the same utilization
+       * denominator for CPU meters. */
+      const unsigned long long elapsed = super->monotonicMs - super->prevMonotonicMs;
+      const unsigned long long totalPeriod = elapsed * (unsigned long long)this->jiffies / 1000;
+      unsigned long long aggregateTotal = 0;
+      unsigned long long aggregateIdle = 0;
+      for (unsigned int i = 0; i < super->existingCPUs; i++) {
+         CPUData* cpuData = &this->cpuData[i + 1];
+         unsigned long long idle = 0;
+         bool found = false;
+         for (unsigned int state = 0; ; state++) {
+            char path[128];
+            xSnprintf(path, sizeof(path), CPU_IDLE_TIME_PATH, i, state);
+            FILE* idleFile = fopen(path, "r");
+            if (!idleFile)
+               break;
+            unsigned long long stateIdle;
+            if (fscanf(idleFile, "%llu", &stateIdle) == 1) {
+               idle += stateIdle;
+               found = true;
+            }
+            fclose(idleFile);
+         }
+         if (!found)
+            continue;
+
+         const unsigned long long idleTime = idle * (unsigned long long)this->jiffies / 1000000;
+         cpuData->totalPeriod = totalPeriod;
+         cpuData->idlePeriod = saturatingSub(idleTime, cpuData->idleTime);
+         cpuData->userPeriod = saturatingSub(totalPeriod, cpuData->idlePeriod);
+         cpuData->totalTime += totalPeriod;
+         cpuData->idleTime = idleTime;
+         cpuData->idleAllPeriod = cpuData->idlePeriod;
+         cpuData->idleAllTime = idleTime;
+         aggregateTotal += totalPeriod;
+         aggregateIdle += idleTime;
+      }
+
+      CPUData* average = &this->cpuData[0];
+      average->totalPeriod = aggregateTotal;
+      average->idlePeriod = saturatingSub(aggregateIdle, average->idleTime);
+      average->userPeriod = saturatingSub(aggregateTotal, average->idlePeriod);
+      average->totalTime += aggregateTotal;
+      average->idleTime = aggregateIdle;
+      average->idleAllPeriod = average->idlePeriod;
+      average->idleAllTime = aggregateIdle;
+      this->period = (double)aggregateTotal / super->activeCPUs;
+      return;
+   }
 
    // One thread per CPU thread + one for the average
    assert(super->existingCPUs < UINT_MAX - 1);
@@ -904,22 +954,27 @@ Machine* Machine_new(UsersTable* usersTable, uid_t userId) {
 
    // Read btime (the kernel boot time, as number of seconds since the epoch)
    FILE* statfile = fopen(PROCSTATFILE, "r");
-   if (statfile == NULL)
-      CRT_fatalError("Cannot open " PROCSTATFILE);
-
    this->boottime = -1;
 
-   while (true) {
-      char buffer[PROC_LINE_LENGTH + 1];
-      if (fgets(buffer, sizeof(buffer), statfile) == NULL)
-         break;
-      if (String_startsWith(buffer, "btime ") == false)
-         continue;
-      if (sscanf(buffer, "btime %lld\n", &this->boottime) == 1)
-         break;
-      CRT_fatalError("Failed to parse btime from " PROCSTATFILE);
+   if (statfile == NULL) {
+      struct sysinfo info;
+      time_t now = time(NULL);
+      if (sysinfo(&info) != 0 || now == (time_t)-1)
+         CRT_fatalError("Cannot determine system boot time");
+      this->boottime = (long long)now - info.uptime;
+   } else {
+      while (true) {
+         char buffer[PROC_LINE_LENGTH + 1];
+         if (fgets(buffer, sizeof(buffer), statfile) == NULL)
+            break;
+         if (String_startsWith(buffer, "btime ") == false)
+            continue;
+         if (sscanf(buffer, "btime %lld\n", &this->boottime) == 1)
+            break;
+         CRT_fatalError("Failed to parse btime from " PROCSTATFILE);
+      }
+      fclose(statfile);
    }
-   fclose(statfile);
 
    if (this->boottime == -1)
       CRT_fatalError("No btime in " PROCSTATFILE);
