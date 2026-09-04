@@ -113,6 +113,10 @@ typedef struct LinuxMachine_ {
 #define PROCSTATFILE PROCDIR "/stat"
 #endif
 
+#ifndef CPU_IDLE_TIME_PATH
+#define CPU_IDLE_TIME_PATH "/sys/devices/system/cpu/cpu%u/cpuidle/state%u/time"
+#endif
+
 #ifndef PROCMEMINFOFILE
 #define PROCMEMINFOFILE PROCDIR "/meminfo"
 #endif
