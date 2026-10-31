@@ -53,7 +53,7 @@ typedef ATTR_NONNULL void (*Meter_Done)(Meter*);
 typedef ATTR_NONNULL void (*Meter_UpdateMode)(Meter*, MeterModeId);
 typedef ATTR_NONNULL void (*Meter_UpdateValues)(Meter*);
 typedef ATTR_NONNULL void (*Meter_Draw)(Meter*, int, int, int);
-typedef ATTR_NONNULL const char* (*Meter_GetCaption)(const Meter*);
+typedef ATTR_NONNULL const char* (*Meter_GetCaption)(const Meter*, int width);
 typedef ATTR_NONNULL ATTR_ACCESS3_W(2, 3) void (*Meter_GetUiName)(const Meter*, char*, size_t);
 typedef ATTR_NONNULL int (*Meter_Click)(Meter*, int relX, int relY);
 
@@ -97,7 +97,7 @@ typedef struct MeterClass_ {
 #define Meter_getUiNameFn(this_)       As_Meter(this_)->getUiName
 #define Meter_getUiName(this_,n_,l_)   As_Meter(this_)->getUiName((const Meter*)(this_),n_,l_)
 #define Meter_getCaptionFn(this_)      As_Meter(this_)->getCaption
-#define Meter_getCaption(this_)        (Meter_getCaptionFn(this_) ? As_Meter(this_)->getCaption((const Meter*)(this_)) : (this_)->caption)
+#define Meter_getCaption(this_, w_)    (Meter_getCaptionFn(this_) ? As_Meter(this_)->getCaption((const Meter*)(this_), (w_)) : (this_)->caption)
 #define Meter_supportedModes(this_)    As_Meter(this_)->supportedModes
 #define Meter_attributes(this_)        As_Meter(this_)->attributes
 #define Meter_name(this_)              As_Meter(this_)->name

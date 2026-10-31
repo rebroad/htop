@@ -79,6 +79,15 @@ static void CPUMeter_init(Meter* this) {
    }
 }
 
+static const char* CPUMeter_getCaption(const Meter* this, int width) {
+   const char* caption = this->caption;
+   if (width < 12) {
+      while (*caption == ' ')
+         caption++;
+   }
+   return caption;
+}
+
 // Custom uiName runtime logic to include the param (processor)
 static void CPUMeter_getUiName(const Meter* this, char* buffer, size_t length) {
    assert(length > 0);
@@ -434,6 +443,7 @@ const MeterClass CPUMeter_class = {
       .display = CPUMeter_display
    },
    .updateValues = CPUMeter_updateValues,
+   .getCaption = CPUMeter_getCaption,
    .getUiName = CPUMeter_getUiName,
    .defaultMode = BAR_METERMODE,
    .supportedModes = METERMODE_DEFAULT_SUPPORTED,

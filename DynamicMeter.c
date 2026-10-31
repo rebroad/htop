@@ -89,7 +89,7 @@ static void DynamicMeter_display(const Object* cast, RichString* out) {
    Platform_dynamicMeterDisplay(meter, out);
 }
 
-static const char* DynamicMeter_getCaption(const Meter* this) {
+static const char* DynamicMeter_getCaption(const Meter* this, int width ATTR_UNUSED) {
    const Settings* settings = this->host->settings;
    const DynamicMeter* meter = Hashtable_get(settings->dynamicMeters, this->param);
    if (meter)

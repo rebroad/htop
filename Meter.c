@@ -63,7 +63,7 @@ static void TextMeterMode_draw(Meter* this, int x, int y, int w) {
    assert(x >= 0);
    assert(w <= INT_MAX - x);
 
-   const char* caption = Meter_getCaption(this);
+   const char* caption = Meter_getCaption(this, w);
    if (w > 0) {
       attrset(CRT_colors[METER_TEXT]);
       mvaddnstr(y, x, caption, w);
@@ -92,8 +92,8 @@ static void BarMeterMode_draw(Meter* this, int x, int y, int w) {
    assert(w <= INT_MAX - x);
 
    // Draw the caption
-   int captionLen = 3;
-   const char* caption = Meter_getCaption(this);
+   const char* caption = Meter_getCaption(this, w);
+   int captionLen = (int)strnlen(caption, 3);
    if (w >= captionLen) {
       attrset(CRT_colors[METER_TEXT]);
       mvaddnstr(y, x, caption, captionLen);
@@ -223,8 +223,8 @@ static void GraphMeterMode_draw(Meter* this, int x, int y, int w) {
    assert(w <= INT_MAX - x);
 
    // Draw the caption
-   const int captionLen = 3;
-   const char* caption = Meter_getCaption(this);
+   const char* caption = Meter_getCaption(this, w);
+   const int captionLen = (int)strnlen(caption, 3);
    if (w >= captionLen) {
       attrset(CRT_colors[METER_TEXT]);
       mvaddnstr(y, x, caption, captionLen);
@@ -365,7 +365,7 @@ static void LEDMeterMode_draw(Meter* this, int x, int y, int w) {
       y + 2;
    attrset(CRT_colors[LED_COLOR]);
 
-   const char* caption = Meter_getCaption(this);
+   const char* caption = Meter_getCaption(this, w);
    if (w > 0) {
       mvaddnstr(yText, x, caption, w);
    }

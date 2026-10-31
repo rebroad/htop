@@ -101,6 +101,10 @@ static void LoadMeter_display(const Object* cast, RichString* out) {
    RichString_appendnAscii(out, CRT_colors[LOAD], buffer, len);
 }
 
+static const char* LoadAverageMeter_getCaption(const Meter* this ATTR_UNUSED, int width) {
+   return width < 32 ? "Load: " : "Load average: ";
+}
+
 const MeterClass LoadAverageMeter_class = {
    .super = {
       .extends = Class(Meter),
@@ -108,6 +112,7 @@ const MeterClass LoadAverageMeter_class = {
       .display = LoadAverageMeter_display,
    },
    .updateValues = LoadAverageMeter_updateValues,
+   .getCaption = LoadAverageMeter_getCaption,
    .defaultMode = TEXT_METERMODE,
    .supportedModes = METERMODE_DEFAULT_SUPPORTED,
    .maxItems = 3,
