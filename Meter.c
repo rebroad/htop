@@ -124,9 +124,20 @@ static void BarMeterMode_draw(Meter* this, int x, int y, int w) {
 
    // The text in the bar is right aligned;
    // Pad with maximal spaces and then calculate needed starting position offset
+   const char* text = this->txtBuffer;
+   char compactPercent[8];
+   if (w == 4 && strlen(text) > (size_t)w) {
+      char* end;
+      double percent = strtod(text, &end);
+      if (end != text && *end == '%' && end[1] == '\0' && isfinite(percent) && percent >= 0.0 && percent <= 100.0) {
+         xSnprintf(compactPercent, sizeof(compactPercent), "%3.0f%%", percent);
+         text = compactPercent;
+      }
+   }
+
    RichString_begin(bar);
    RichString_appendChr(&bar, 0, ' ', w);
-   RichString_appendWide(&bar, 0, this->txtBuffer);
+   RichString_appendWide(&bar, 0, text);
 
    int startPos = RichString_sizeVal(bar) - w;
    if (startPos > w) {
